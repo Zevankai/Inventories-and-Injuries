@@ -480,7 +480,7 @@ export function SettingsPanel({
                 marginTop: '6px',
                 fontStyle: 'italic'
               }}>
-                Exports all token data except name and claimedBy
+                Exports all token data (preserves condition/name for reference)
               </p>
             </div>
             
@@ -520,13 +520,12 @@ export function SettingsPanel({
                     
                     if (importedData && characterData) {
                       if (window.confirm(
-                        'This will replace the current token data (except name and claimedBy). Continue?'
+                        'This will replace the current token data (preserves claimedBy). Continue?'
                       )) {
-                        // Merge imported data with current token identifiers
+                        // Merge imported data with current claimedBy to preserve ownership
                         updateData({
                           ...importedData,
-                          // Keep current token name and claimedBy
-                          condition: characterData.condition,
+                          // Keep current claimedBy
                           claimedBy: characterData.claimedBy,
                         });
                         alert('Token data restored successfully!');

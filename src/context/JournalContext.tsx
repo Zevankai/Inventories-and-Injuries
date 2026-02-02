@@ -50,7 +50,7 @@ export const JournalProvider: React.FC<JournalProviderProps> = ({ children }) =>
   const [controlledTokenIds, setControlledTokenIds] = useState<string[]>([]);
   const [currentTokenId, setCurrentTokenId] = useState<string | null>(null);
 
-  // Load journal data and user info on mount
+  // Load journal data and user info
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -104,6 +104,7 @@ export const JournalProvider: React.FC<JournalProviderProps> = ({ children }) =>
     loadData();
     
     // Poll for token changes every 2 seconds
+    // Note: Using polling as a simple approach; could be improved with OBR event listeners
     const interval = setInterval(async () => {
       const selection = await OBR.player.getSelection();
       const tokenId = selection && selection.length > 0 ? selection[0] : null;
@@ -114,7 +115,7 @@ export const JournalProvider: React.FC<JournalProviderProps> = ({ children }) =>
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [currentTokenId]);
+  }, []); // Empty dependency array - runs once on mount
 
   // Save journals to storage
   const saveData = async (updatedFolders: JournalFolder[], updatedNotes: JournalNote[]) => {

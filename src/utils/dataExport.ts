@@ -2,7 +2,8 @@ import type { CharacterData } from '../types';
 
 /**
  * Export token data for backup
- * Excludes token-specific identifiers like condition (name), claimedBy
+ * Excludes token-specific identifiers like claimedBy
+ * Note: 'condition' field (token name in game) is preserved for reference
  */
 export const exportTokenData = (characterData: CharacterData): string => {
   // Create a clean copy excluding token-specific data
@@ -82,9 +83,9 @@ export const importTokenData = (jsonString: string): Partial<CharacterData> | nu
   try {
     const data = JSON.parse(jsonString);
     
-    // Validate that it has expected structure
+    // Validate that it has expected structure (at least one of these should be present)
     if (!data.packType && !data.tokenType) {
-      throw new Error('Invalid token data: missing packType or tokenType');
+      throw new Error('Invalid token data: missing both packType and tokenType');
     }
     
     // Remove export metadata
