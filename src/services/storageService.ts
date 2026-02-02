@@ -368,40 +368,41 @@ export const saveShopPresets = async (
  */
 
 /**
- * Load journals for a campaign
+ * Load journals for a specific token
  */
-export const loadJournals = async (campaignId: string): Promise<{ folders: any[]; notes: any[] }> => {
+export const loadJournals = async (campaignId: string, tokenId: string): Promise<{ folders: any[]; notes: any[] }> => {
   try {
-    const url = `${getApiBaseUrl()}/api/journals/${campaignId}`;
+    const url = `${getApiBaseUrl()}/api/journals/${campaignId}/${tokenId}`;
     const response = await fetch(url);
 
     if (response.ok) {
       const data = await response.json();
-      console.log('[StorageService] Loaded journals from Vercel Blob:', data.folders.length, 'folders,', data.notes.length, 'notes');
+      console.log('[StorageService] Loaded token journals from Vercel Blob:', data.folders.length, 'folders,', data.notes.length, 'notes');
       return data;
     }
 
     if (response.status === 404) {
-      console.log('[StorageService] No journals found');
+      console.log('[StorageService] No journals found for token');
       return { folders: [], notes: [] };
     }
 
     throw new Error(`Failed to load journals: ${response.statusText}`);
   } catch (error) {
-    console.error('[StorageService] Error loading journals:', error);
+    console.error('[StorageService] Error loading token journals:', error);
     return { folders: [], notes: [] };
   }
 };
 
 /**
- * Save journals for a campaign
+ * Save journals for a specific token
  */
 export const saveJournals = async (
   campaignId: string,
+  tokenId: string,
   data: { folders: any[]; notes: any[] }
 ): Promise<boolean> => {
   try {
-    const url = `${getApiBaseUrl()}/api/journals/${campaignId}`;
+    const url = `${getApiBaseUrl()}/api/journals/${campaignId}/${tokenId}`;
     const response = await fetch(url, {
       method: 'PUT',
       headers: {
@@ -411,13 +412,13 @@ export const saveJournals = async (
     });
 
     if (response.ok) {
-      console.log('[StorageService] Saved journals to Vercel Blob');
+      console.log('[StorageService] Saved token journals to Vercel Blob');
       return true;
     }
 
     throw new Error(`Failed to save journals: ${response.statusText}`);
   } catch (error) {
-    console.error('[StorageService] Error saving journals:', error);
+    console.error('[StorageService] Error saving token journals:', error);
     return false;
   }
 };

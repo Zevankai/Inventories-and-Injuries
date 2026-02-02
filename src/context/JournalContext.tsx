@@ -48,6 +48,7 @@ export const JournalProvider: React.FC<JournalProviderProps> = ({ children }) =>
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [playerRole, setPlayerRole] = useState<string | null>(null);
   const [controlledTokenIds, setControlledTokenIds] = useState<string[]>([]);
+  const [currentTokenId, setCurrentTokenId] = useState<string | null>(null);
 
   // Load journal data and user info on mount
   useEffect(() => {
@@ -58,8 +59,20 @@ export const JournalProvider: React.FC<JournalProviderProps> = ({ children }) =>
         // Get campaign ID
         const campaignId = await getCampaignId();
         
-        // Load journals
-        const data = await loadJournals(campaignId);
+        // Get current token ID from selection
+        const selection = await OBR.player.getSelection();
+        const tokenId = selection && selection.length > 0 ? selection[0] : null;
+        
+        if (!tokenId) {
+          console.log('[JournalContext] No token selected');
+          setLoading(false);
+          return;
+        }
+        
+        setCurrentTokenId(tokenId);
+        
+        // Load journals for this specific token
+        const data = await loadJournals(campaignId, tokenId);
         setFolders(data.folders);
         setNotes(data.notes);
         
@@ -80,7 +93,7 @@ export const JournalProvider: React.FC<JournalProviderProps> = ({ children }) =>
           .map((token) => token.id);
         setControlledTokenIds(controlled);
         
-        console.log('[JournalContext] Loaded journals:', data.folders.length, 'folders,', data.notes.length, 'notes');
+        console.log('[JournalContext] Loaded journals for token:', tokenId, data.folders.length, 'folders,', data.notes.length, 'notes');
       } catch (error) {
         console.error('[JournalContext] Error loading journals:', error);
       } finally {
@@ -89,17 +102,34 @@ export const JournalProvider: React.FC<JournalProviderProps> = ({ children }) =>
     };
 
     loadData();
-  }, []);
+    
+    // Poll for token changes every 2 seconds
+    const interval = setInterval(async () => {
+      const selection = await OBR.player.getSelection();
+      const tokenId = selection && selection.length > 0 ? selection[0] : null;
+      
+      if (tokenId && tokenId !== currentTokenId) {
+        loadData();
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [currentTokenId]);
 
   // Save journals to storage
   const saveData = async (updatedFolders: JournalFolder[], updatedNotes: JournalNote[]) => {
+    if (!currentTokenId) {
+      console.error('[JournalContext] No token ID available for saving');
+      return;
+    }
+    
     try {
       const campaignId = await getCampaignId();
       const data: JournalData = {
         folders: updatedFolders,
         notes: updatedNotes,
       };
-      const success = await saveJournals(campaignId, data);
+      const success = await saveJournals(campaignId, currentTokenId, data);
       if (!success) {
         console.error('[JournalContext] Failed to save journals');
       }
