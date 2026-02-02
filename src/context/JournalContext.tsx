@@ -1,0 +1,215 @@
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import OBR from '@owlbear-rodeo/sdk';
+import { nanoid } from 'nanoid';
+import type { JournalFolder, JournalNote, JournalData, Visibility } from '../types/journal';
+import { getCampaignId, loadJournals, saveJournals } from '../services/storageService';
+
+interface JournalContextType {
+  folders: JournalFolder[];
+  notes: JournalNote[];
+  loading: boolean;
+  currentUserId: string | null;
+  playerRole: string | null;
+  
+  // Folder operations
+  addFolder: (name: string, parentId: string | null, visibility: Visibility) => Promise<JournalFolder>;
+  updateFolder: (id: string, updates: Partial<JournalFolder>) => Promise<void>;
+  deleteFolder: (id: string) => Promise<void>;
+  
+  // Note operations
+  addNote: (title: string, folderId: string | null, visibility: Visibility) => Promise<JournalNote>;
+  updateNote: (id: string, updates: Partial<JournalNote>) => Promise<void>;
+  deleteNote: (id: string) => Promise<void>;
+  
+  // Controlled tokens for "Shared with me"
+  controlledTokenIds: string[];
+}
+
+const JournalContext = createContext<JournalContextType | undefined>(undefined);
+
+export const useJournal = () => {
+  const context = useContext(JournalContext);
+  if (!context) {
+    throw new Error('useJournal must be used within a JournalProvider');
+  }
+  return context;
+};
+
+interface JournalProviderProps {
+  children: ReactNode;
+}
+
+export const JournalProvider: React.FC<JournalProviderProps> = ({ children }) => {
+  const [folders, setFolders] = useState<JournalFolder[]>([]);
+  const [notes, setNotes] = useState<JournalNote[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [playerRole, setPlayerRole] = useState<string | null>(null);
+  const [controlledTokenIds, setControlledTokenIds] = useState<string[]>([]);
+
+  // Load journal data and user info on mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        
+        // Get campaign ID
+        const campaignId = await getCampaignId();
+        
+        // Load journals
+        const data = await loadJournals(campaignId);
+        setFolders(data.folders);
+        setNotes(data.notes);
+        
+        // Get current user info
+        const playerId = await OBR.player.id;
+        const role = await OBR.player.role;
+        setCurrentUserId(playerId);
+        setPlayerRole(role);
+        
+        // Get controlled tokens
+        const items = await OBR.scene.items.getItems();
+        const tokenItems = items.filter((item) => item.layer === 'CHARACTER');
+        const controlled = tokenItems
+          .filter((token) => {
+            const metadata = token.metadata as any;
+            return metadata['com.weighted-inventory/claim']?.playerId === playerId;
+          })
+          .map((token) => token.id);
+        setControlledTokenIds(controlled);
+        
+        console.log('[JournalContext] Loaded journals:', data.folders.length, 'folders,', data.notes.length, 'notes');
+      } catch (error) {
+        console.error('[JournalContext] Error loading journals:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  // Save journals to storage
+  const saveData = async (updatedFolders: JournalFolder[], updatedNotes: JournalNote[]) => {
+    try {
+      const campaignId = await getCampaignId();
+      const data: JournalData = {
+        folders: updatedFolders,
+        notes: updatedNotes,
+      };
+      const success = await saveJournals(campaignId, data);
+      if (!success) {
+        console.error('[JournalContext] Failed to save journals');
+      }
+    } catch (error) {
+      console.error('[JournalContext] Error saving journals:', error);
+    }
+  };
+
+  // Folder operations
+  const addFolder = async (name: string, parentId: string | null, visibility: Visibility): Promise<JournalFolder> => {
+    if (!currentUserId) throw new Error('User ID not available');
+    
+    const newFolder: JournalFolder = {
+      id: nanoid(),
+      name,
+      parentId,
+      order: folders.filter(f => f.parentId === parentId).length,
+      createdBy: currentUserId,
+      createdAt: new Date().toISOString(),
+      visibility,
+    };
+    
+    const updatedFolders = [...folders, newFolder];
+    setFolders(updatedFolders);
+    await saveData(updatedFolders, notes);
+    return newFolder;
+  };
+
+  const updateFolder = async (id: string, updates: Partial<JournalFolder>) => {
+    const updatedFolders = folders.map(folder =>
+      folder.id === id ? { ...folder, ...updates } : folder
+    );
+    setFolders(updatedFolders);
+    await saveData(updatedFolders, notes);
+  };
+
+  const deleteFolder = async (id: string) => {
+    // Delete folder and all its children recursively
+    const getAllChildFolderIds = (parentId: string): string[] => {
+      const children = folders.filter(f => f.parentId === parentId);
+      return [
+        parentId,
+        ...children.flatMap(child => getAllChildFolderIds(child.id))
+      ];
+    };
+    
+    const folderIdsToDelete = getAllChildFolderIds(id);
+    const updatedFolders = folders.filter(f => !folderIdsToDelete.includes(f.id));
+    const updatedNotes = notes.filter(n => !folderIdsToDelete.includes(n.folderId || ''));
+    
+    setFolders(updatedFolders);
+    setNotes(updatedNotes);
+    await saveData(updatedFolders, updatedNotes);
+  };
+
+  // Note operations
+  const addNote = async (title: string, folderId: string | null, visibility: Visibility): Promise<JournalNote> => {
+    if (!currentUserId) throw new Error('User ID not available');
+    
+    const now = new Date().toISOString();
+    const newNote: JournalNote = {
+      id: nanoid(),
+      folderId,
+      title,
+      content: '',
+      createdBy: currentUserId,
+      createdAt: now,
+      updatedAt: now,
+      visibility,
+      sharedWithTokenIds: [],
+    };
+    
+    const updatedNotes = [...notes, newNote];
+    setNotes(updatedNotes);
+    await saveData(folders, updatedNotes);
+    return newNote;
+  };
+
+  const updateNote = async (id: string, updates: Partial<JournalNote>) => {
+    const updatedNotes = notes.map(note =>
+      note.id === id 
+        ? { ...note, ...updates, updatedAt: new Date().toISOString() } 
+        : note
+    );
+    setNotes(updatedNotes);
+    await saveData(folders, updatedNotes);
+  };
+
+  const deleteNote = async (id: string) => {
+    const updatedNotes = notes.filter(n => n.id !== id);
+    setNotes(updatedNotes);
+    await saveData(folders, updatedNotes);
+  };
+
+  const value: JournalContextType = {
+    folders,
+    notes,
+    loading,
+    currentUserId,
+    playerRole,
+    addFolder,
+    updateFolder,
+    deleteFolder,
+    addNote,
+    updateNote,
+    deleteNote,
+    controlledTokenIds,
+  };
+
+  return (
+    <JournalContext.Provider value={value}>
+      {children}
+    </JournalContext.Provider>
+  );
+};

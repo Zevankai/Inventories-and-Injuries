@@ -1,0 +1,450 @@
+.journal-tab {
+  display: flex;
+  height: 100%;
+  gap: 10px;
+  padding: 10px;
+  overflow: hidden;
+}
+
+.journal-sidebar {
+  width: 250px;
+  border-right: 1px solid var(--accent-gold);
+  padding-right: 10px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.journal-sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.journal-sidebar-header h3 {
+  margin: 0;
+  font-size: 1.1em;
+  color: var(--accent-gold);
+}
+
+.journal-folder {
+  padding: 8px;
+  margin: 4px 0;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.2s;
+}
+
+.journal-folder:hover {
+  background-color: rgba(255, 215, 0, 0.1);
+}
+
+.journal-folder.selected {
+  background-color: rgba(255, 215, 0, 0.2);
+  border: 1px solid var(--accent-gold);
+}
+
+.folder-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.journal-folder:hover .folder-actions {
+  opacity: 1;
+}
+
+.folder-name-input {
+  width: 100%;
+  padding: 4px;
+  border: 1px solid var(--accent-gold);
+  background-color: var(--bg-dark);
+  color: var(--accent-gold);
+  border-radius: 4px;
+}
+
+.journal-main {
+  flex: 1;
+  display: flex;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.journal-notes-list {
+  width: 200px;
+  border-right: 1px solid var(--accent-gold);
+  padding-right: 10px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.journal-notes-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.journal-notes-header h3 {
+  margin: 0;
+  font-size: 1.1em;
+  color: var(--accent-gold);
+}
+
+.journal-note-item {
+  padding: 8px;
+  margin: 4px 0;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.2s;
+}
+
+.journal-note-item:hover {
+  background-color: rgba(255, 215, 0, 0.1);
+}
+
+.journal-note-item.selected {
+  background-color: rgba(255, 215, 0, 0.2);
+  border: 1px solid var(--accent-gold);
+}
+
+.note-item-title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.journal-editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.journal-editor-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: rgba(255, 215, 0, 0.5);
+  font-style: italic;
+}
+
+.journal-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  gap: 10px;
+}
+
+.note-title-input {
+  flex: 1;
+  padding: 8px;
+  font-size: 1.3em;
+  font-weight: bold;
+  border: 1px solid var(--accent-gold);
+  background-color: var(--bg-dark);
+  color: var(--accent-gold);
+  border-radius: 4px;
+}
+
+.editor-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.visibility-select {
+  padding: 6px;
+  border: 1px solid var(--accent-gold);
+  background-color: var(--bg-dark);
+  color: var(--accent-gold);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-share {
+  padding: 6px 12px;
+  border: 1px solid var(--accent-gold);
+  background-color: var(--bg-dark);
+  color: var(--accent-gold);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-share:hover {
+  background-color: rgba(255, 215, 0, 0.2);
+}
+
+.tiptap-toolbar {
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--accent-gold);
+  border-radius: 4px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.tiptap-toolbar button {
+  padding: 6px 10px;
+  border: 1px solid var(--accent-gold);
+  background-color: var(--bg-dark);
+  color: var(--accent-gold);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  min-width: 32px;
+}
+
+.tiptap-toolbar button:hover {
+  background-color: rgba(255, 215, 0, 0.2);
+}
+
+.tiptap-toolbar button.active {
+  background-color: rgba(255, 215, 0, 0.3);
+}
+
+.tiptap-editor-wrapper {
+  flex: 1;
+  border: 1px solid var(--accent-gold);
+  border-radius: 4px;
+  padding: 10px;
+  overflow-y: auto;
+}
+
+.tiptap-editor-wrapper .tiptap {
+  outline: none;
+  min-height: 100%;
+}
+
+.tiptap-editor-wrapper .tiptap p {
+  margin: 0.5em 0;
+}
+
+.tiptap-editor-wrapper .tiptap h1,
+.tiptap-editor-wrapper .tiptap h2,
+.tiptap-editor-wrapper .tiptap h3 {
+  margin: 1em 0 0.5em 0;
+  color: var(--accent-gold);
+}
+
+.tiptap-editor-wrapper .tiptap ul,
+.tiptap-editor-wrapper .tiptap ol {
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+.tiptap-editor-wrapper .tiptap blockquote {
+  border-left: 3px solid var(--accent-gold);
+  padding-left: 1em;
+  margin: 1em 0;
+  font-style: italic;
+}
+
+.tiptap-editor-wrapper .tiptap code {
+  background-color: rgba(255, 215, 0, 0.1);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: monospace;
+}
+
+.tiptap-editor-wrapper .tiptap pre {
+  background-color: rgba(255, 215, 0, 0.1);
+  padding: 1em;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.tiptap-editor-wrapper .tiptap pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+.note-content-readonly {
+  min-height: 100%;
+}
+
+.note-content-readonly p {
+  margin: 0.5em 0;
+}
+
+.note-content-readonly h1,
+.note-content-readonly h2,
+.note-content-readonly h3 {
+  margin: 1em 0 0.5em 0;
+  color: var(--accent-gold);
+}
+
+.note-content-readonly ul,
+.note-content-readonly ol {
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+.note-content-readonly blockquote {
+  border-left: 3px solid var(--accent-gold);
+  padding-left: 1em;
+  margin: 1em 0;
+  font-style: italic;
+}
+
+.note-content-readonly code {
+  background-color: rgba(255, 215, 0, 0.1);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: monospace;
+}
+
+.note-content-readonly pre {
+  background-color: rgba(255, 215, 0, 0.1);
+  padding: 1em;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.note-content-readonly pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+.btn-icon {
+  padding: 4px 8px;
+  border: 1px solid var(--accent-gold);
+  background-color: var(--bg-dark);
+  color: var(--accent-gold);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1.2em;
+  transition: background-color 0.2s;
+}
+
+.btn-icon:hover {
+  background-color: rgba(255, 215, 0, 0.2);
+}
+
+.btn-icon-small {
+  padding: 2px 6px;
+  border: 1px solid var(--accent-gold);
+  background-color: var(--bg-dark);
+  color: var(--accent-gold);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: background-color 0.2s;
+}
+
+.btn-icon-small:hover {
+  background-color: rgba(255, 215, 0, 0.2);
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: var(--bg-dark);
+  border: 2px solid var(--accent-gold);
+  border-radius: 8px;
+  padding: 20px;
+  min-width: 300px;
+  max-width: 500px;
+}
+
+.modal-content h3 {
+  margin: 0 0 15px 0;
+  color: var(--accent-gold);
+}
+
+.modal-input,
+.modal-select {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 10px;
+  border: 1px solid var(--accent-gold);
+  background-color: var(--bg-dark);
+  color: var(--accent-gold);
+  border-radius: 4px;
+  font-size: 1em;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.btn-primary {
+  padding: 8px 16px;
+  border: 1px solid var(--accent-gold);
+  background-color: var(--accent-gold);
+  color: var(--bg-dark);
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: opacity 0.2s;
+}
+
+.btn-primary:hover {
+  opacity: 0.8;
+}
+
+.btn-secondary {
+  padding: 8px 16px;
+  border: 1px solid var(--accent-gold);
+  background-color: var(--bg-dark);
+  color: var(--accent-gold);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-secondary:hover {
+  background-color: rgba(255, 215, 0, 0.2);
+}
+
+.token-list {
+  max-height: 300px;
+  overflow-y: auto;
+  margin: 10px 0;
+}
+
+.token-checkbox {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  margin: 4px 0;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.token-checkbox:hover {
+  background-color: rgba(255, 215, 0, 0.1);
+}
+
+.token-checkbox input {
+  margin-right: 8px;
+  cursor: pointer;
+}

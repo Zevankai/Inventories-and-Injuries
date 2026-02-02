@@ -10,9 +10,17 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/modifiers": "^8.0.0",
+    "@dnd-kit/sortable": "^9.0.0",
     "@owlbear-rodeo/sdk": "^3.1.0",
+    "@tiptap/extension-link": "^2.13.1",
+    "@tiptap/extension-underline": "^2.13.1",
+    "@tiptap/react": "^2.13.1",
+    "@tiptap/starter-kit": "^2.13.1",
     "@types/uuid": "^10.0.0",
     "@vercel/blob": "^2.0.1",
+    "nanoid": "^5.0.9",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "uuid": "^13.0.0"
