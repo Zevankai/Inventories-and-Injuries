@@ -9,6 +9,7 @@ import type { Item, ItemCategory, CharacterData, Tab, StorageType, Vault, Curren
 import { HomeTab } from './components/tabs/HomeTab';
 import { CalendarTab } from './components/tabs/CalendarTab';
 import { JournalTab } from './components/tabs/JournalTab';
+import { SpellsTab } from './components/tabs/SpellsTab';
 import { LoreTab } from './components/tabs/LoreTab';
 import { LoreSettingsTab } from './components/tabs/LoreSettingsTab';
 import { MonsterLootTab } from './components/tabs/MonsterLootTab';
@@ -731,6 +732,14 @@ export default function ExpandedInventoryWindow() {
     { id: 'External', label: 'STORAGE' }, { id: 'Coin', label: 'COIN' },
   ];
 
+  // Add Spells tab for player/party tokens, and NPC tokens (GM only)
+  const showSpellsTab = !viewingStorageId && characterData?.tokenType !== 'lore' && 
+    characterData?.tokenType !== 'monster' && characterData?.tokenType !== 'merchant' &&
+    (characterData?.tokenType !== 'npc' || playerRole === 'GM');
+  if (showSpellsTab) {
+    baseTabs.push({ id: 'Spells', label: 'SPELLS' });
+  }
+
   let visibleTabs = baseTabs;
 
   if (viewingStorageId) {
@@ -1100,6 +1109,17 @@ export default function ExpandedInventoryWindow() {
         {/* JOURNAL TAB */}
         {activeTab === 'Journal' && (
           <JournalTab playerRole={playerRole} />
+        )}
+
+        {/* SPELLS TAB */}
+        {activeTab === 'Spells' && characterData?.tokenType !== 'lore' && 
+         characterData?.tokenType !== 'monster' && characterData?.tokenType !== 'merchant' &&
+         (characterData?.tokenType !== 'npc' || playerRole === 'GM') && (
+          <SpellsTab
+            characterData={characterData}
+            canEdit={playerRole === 'GM' || characterData?.claimedBy === playerId || characterData?.tokenType === 'party'}
+            updateData={updateData}
+          />
         )}
 
         {/* PACK TAB */}
