@@ -7,6 +7,7 @@ import './index.css'
 import OBR from '@owlbear-rodeo/sdk'
 import { MAIN_POPOVER_ID, DEFAULT_POPOVER_WIDTH } from './constants'
 import { RepositoryProvider } from './context/RepositoryContext'
+import { JournalProvider } from './context/JournalContext'
 
 OBR.onReady(() => {
   OBR.contextMenu.create({
@@ -46,7 +47,9 @@ OBR.onReady(() => {
   ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
     <React.StrictMode>
       <RepositoryProvider>
-        <Component />
+        <JournalProvider>
+          <Component />
+        </JournalProvider>
       </RepositoryProvider>
     </React.StrictMode>,
   )

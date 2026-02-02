@@ -28,6 +28,10 @@ Serverless functions handle data persistence:
 - `GET /api/repositories/[campaignId]/spells` - Load custom spells
 - `PUT /api/repositories/[campaignId]/spells` - Save custom spells
 
+#### Journals
+- `GET /api/journals/[campaignId]` - Load campaign journals (folders and notes)
+- `PUT /api/journals/[campaignId]` - Save campaign journals
+
 ### Repository Context (`src/context/RepositoryContext.tsx`)
 Manages custom items and spells:
 - Loads custom repositories on app initialization
@@ -41,7 +45,32 @@ Manages custom items and spells:
 characters/{campaignId}/{tokenId}.json          # Character/lore token data
 repositories/{campaignId}/custom-items.json      # GM's custom items
 repositories/{campaignId}/custom-spells.json     # GM's custom spells
+journals/{campaignId}.json                      # Campaign journals (folders and notes)
 ```
+
+## Journal System
+
+The journal system provides a rich note-taking and organization feature for campaigns:
+
+### Features
+- **Nested Folders**: Organize notes in a hierarchical folder structure with drag-and-drop support
+- **Rich-Text Editor**: TipTap/ProseMirror editor with formatting (bold, italic, underline, headings, lists, blockquotes, code)
+- **Visibility Control**: Three visibility levels for folders and notes:
+  - `public`: Visible to everyone
+  - `playersOnly`: Visible to players but not the GM (useful for player secrets)
+  - `private`: Visible only to the GM (default)
+- **Share with Tokens**: Notes can be shared with specific tokens in the scene. When a player controls a token that a note is shared with, the note appears in their "Shared with me" virtual folder
+- **Client-Side Enforcement**: Visibility rules are enforced client-side. The backend stores all data for the campaign, and the frontend filters based on current user role and controlled tokens
+
+### Security Caveat
+**Important**: Journal visibility is enforced client-side only. All journal data for a campaign is stored in a single blob (`journals/{campaignId}.json`) and is accessible to anyone with access to the campaign. The client-side filtering ensures that players don't see content marked as private in the UI, but this should not be considered secure for sensitive information.
+
+### Journal Context
+The `JournalProvider` in `src/context/JournalContext.tsx` manages journal state:
+- Loads journals on mount
+- Provides functions to add/update/delete folders and notes
+- Tracks controlled tokens for "Shared with me" functionality
+- Automatically saves changes to Vercel Blob storage
 
 ## Environment Setup
 
