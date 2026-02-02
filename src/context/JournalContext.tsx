@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import OBR from '@owlbear-rodeo/sdk';
 import { nanoid } from 'nanoid';
 import type { JournalFolder, JournalNote, JournalData, Visibility } from '../types/journal';
@@ -27,6 +28,7 @@ interface JournalContextType {
 
 const JournalContext = createContext<JournalContextType | undefined>(undefined);
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useJournal = () => {
   const context = useContext(JournalContext);
   if (!context) {
@@ -63,7 +65,7 @@ export const JournalProvider: React.FC<JournalProviderProps> = ({ children }) =>
         
         // Get current user info
         const playerId = await OBR.player.id;
-        const role = await OBR.player.role;
+        const role = await OBR.player.getRole();
         setCurrentUserId(playerId);
         setPlayerRole(role);
         

@@ -10,8 +10,8 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  DragEndEvent,
 } from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
 import {
   arrayMove,
   SortableContext,
@@ -22,7 +22,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import OBR from '@owlbear-rodeo/sdk';
 import { useJournal } from '../../context/JournalContext';
-import type { JournalFolder, JournalNote, Visibility } from '../../types/journal';
+import type { JournalFolder, Visibility } from '../../types/journal';
 import './JournalTab.css';
 
 interface JournalTabProps {
@@ -34,7 +34,6 @@ export const JournalTab: React.FC<JournalTabProps> = ({ playerRole }) => {
     folders,
     notes,
     loading,
-    currentUserId,
     addFolder,
     updateFolder,
     deleteFolder,
