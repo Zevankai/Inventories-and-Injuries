@@ -3,6 +3,7 @@ import type { CharacterData, Theme, TokenType, CharacterRace, CharacterClass, Ch
 import { createDefaultCharacterStats, createDefaultSuperiorityDice } from '../utils/characterStats';
 import OBR from '@owlbear-rodeo/sdk';
 import { saveCharacterData, getCampaignId, TOKEN_DATA_KEY } from '../services/storageService';
+import { downloadTokenData, importTokenData } from '../utils/dataExport';
 
 interface DebugInfo {
   roomKeys: string[];
@@ -425,6 +426,130 @@ export function SettingsPanel({
             >
               Reset to Default
             </button>
+          </div>
+
+          {/* Data Management Section */}
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.05)',
+            padding: '16px',
+            borderRadius: '8px',
+            marginTop: '16px'
+          }}>
+            <h3 style={{
+              fontSize: '14px',
+              color: 'var(--accent-gold)',
+              marginTop: 0,
+              marginBottom: '12px',
+              textTransform: 'uppercase',
+              letterSpacing: '1px'
+            }}>
+              📦 Data Management
+            </h3>
+            
+            {/* Download Backup */}
+            <div style={{ marginBottom: '12px' }}>
+              <button
+                onClick={() => {
+                  if (characterData && tokenId) {
+                    downloadTokenData(characterData, characterData.condition || 'Token');
+                    alert('Token data downloaded successfully!');
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(56, 142, 60, 0.2))',
+                  border: '1px solid rgba(76, 175, 80, 0.4)',
+                  borderRadius: '6px',
+                  color: '#4caf50',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                <span>💾</span>
+                Download Token Backup
+              </button>
+              <p style={{
+                fontSize: '10px',
+                color: 'var(--text-muted)',
+                marginTop: '6px',
+                fontStyle: 'italic'
+              }}>
+                Exports all token data except name and claimedBy
+              </p>
+            </div>
+            
+            {/* Upload/Restore Data */}
+            <div>
+              <label
+                htmlFor="token-data-upload"
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  padding: '10px',
+                  background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.2), rgba(25, 118, 210, 0.2))',
+                  border: '1px solid rgba(33, 150, 243, 0.4)',
+                  borderRadius: '6px',
+                  color: '#2196f3',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                  textAlign: 'center'
+                }}
+              >
+                <span>📥</span> Upload & Restore Data
+              </label>
+              <input
+                id="token-data-upload"
+                type="file"
+                accept=".json"
+                style={{ display: 'none' }}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  
+                  const reader = new FileReader();
+                  reader.onload = async (event) => {
+                    const jsonString = event.target?.result as string;
+                    const importedData = importTokenData(jsonString);
+                    
+                    if (importedData && characterData) {
+                      if (window.confirm(
+                        'This will replace the current token data (except name and claimedBy). Continue?'
+                      )) {
+                        // Merge imported data with current token identifiers
+                        updateData({
+                          ...importedData,
+                          // Keep current token name and claimedBy
+                          condition: characterData.condition,
+                          claimedBy: characterData.claimedBy,
+                        });
+                        alert('Token data restored successfully!');
+                      }
+                    } else {
+                      alert('Invalid backup file. Please select a valid token backup JSON file.');
+                    }
+                    
+                    // Reset file input
+                    e.target.value = '';
+                  };
+                  reader.readAsText(file);
+                }}
+              />
+              <p style={{
+                fontSize: '10px',
+                color: 'var(--text-muted)',
+                marginTop: '6px',
+                fontStyle: 'italic'
+              }}>
+                Restores data from a backup file to this token
+              </p>
+            </div>
           </div>
 
           {/* Debug Info Section */}
