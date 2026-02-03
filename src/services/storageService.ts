@@ -365,10 +365,15 @@ export const saveShopPresets = async (
 
 /**
  * Journal Storage
+ * 
+ * @deprecated These functions are being replaced by OBR item storage in src/utils/journal/itemStorage.ts
+ * They are kept for backward compatibility during migration but should not be used for new code.
+ * Will be removed in a future version after migration is complete.
  */
 
 /**
  * Load journals for a specific token
+ * @deprecated Use readJournals from src/utils/journal/itemStorage.ts instead
  */
 export const loadJournals = async (campaignId: string, tokenId: string): Promise<{ folders: any[]; notes: any[] }> => {
   try {
@@ -395,6 +400,7 @@ export const loadJournals = async (campaignId: string, tokenId: string): Promise
 
 /**
  * Save journals for a specific token
+ * @deprecated Use writeJournals from src/utils/journal/itemStorage.ts instead
  */
 export const saveJournals = async (
   campaignId: string,

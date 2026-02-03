@@ -31,4 +31,5 @@ export interface JournalNote {
 export interface JournalData {
   folders: JournalFolder[];
   notes: JournalNote[];
+  migratedToOBR?: boolean; // Flag to indicate data has been migrated to OBR items
 }

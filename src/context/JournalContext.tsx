@@ -3,7 +3,8 @@ import type { ReactNode } from 'react';
 import OBR from '@owlbear-rodeo/sdk';
 import { nanoid } from 'nanoid';
 import type { JournalFolder, JournalNote, JournalData, Visibility } from '../types/journal';
-import { getCampaignId, loadJournals, saveJournals } from '../services/storageService';
+import { getCampaignId, loadJournals as loadJournalsFromBlob } from '../services/storageService';
+import { readJournals, writeJournals, JOURNAL_ITEM_PREFIX, extractJournalsFromItems } from '../utils/journal/itemStorage';
 
 interface JournalContextType {
   folders: JournalFolder[];
@@ -52,6 +53,10 @@ export const JournalProvider: React.FC<JournalProviderProps> = ({ children }) =>
 
   // Load journal data and user info
   useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+    let unsubscribeItems: (() => void) | undefined;
+    const currentTokenIdRef = { current: currentTokenId };
+    
     const loadData = async () => {
       try {
         setLoading(true);
@@ -70,9 +75,33 @@ export const JournalProvider: React.FC<JournalProviderProps> = ({ children }) =>
         }
         
         setCurrentTokenId(tokenId);
+        currentTokenIdRef.current = tokenId;
         
-        // Load journals for this specific token
-        const data = await loadJournals(campaignId, tokenId);
+        // Try to load from OBR items first
+        let data = await readJournals(tokenId);
+        
+        // If not found in OBR items, try to load from Vercel Blob and migrate
+        if (!data || !data.migratedToOBR) {
+          console.log('[JournalContext] Journals not in OBR items, checking Vercel Blob...');
+          const blobData = await loadJournalsFromBlob(campaignId, tokenId);
+          
+          if (blobData.folders.length > 0 || blobData.notes.length > 0) {
+            console.log('[JournalContext] Migrating journals from Vercel Blob to OBR items...');
+            // Migrate to OBR items
+            const migratedData: JournalData = {
+              folders: blobData.folders,
+              notes: blobData.notes,
+              migratedToOBR: true,
+            };
+            await writeJournals(tokenId, migratedData);
+            data = migratedData;
+            console.log('[JournalContext] Migration complete!');
+          } else {
+            // No data in either location, start fresh
+            data = { folders: [], notes: [], migratedToOBR: true };
+          }
+        }
+        
         setFolders(data.folders);
         setNotes(data.notes);
         
@@ -87,8 +116,9 @@ export const JournalProvider: React.FC<JournalProviderProps> = ({ children }) =>
         const tokenItems = items.filter((item) => item.layer === 'CHARACTER');
         const controlled = tokenItems
           .filter((token) => {
-            const metadata = token.metadata as any;
-            return metadata['com.weighted-inventory/claim']?.playerId === playerId;
+            const metadata = token.metadata as Record<string, unknown>;
+            const claimData = metadata['com.weighted-inventory/claim'] as { playerId?: string } | undefined;
+            return claimData?.playerId === playerId;
           })
           .map((token) => token.id);
         setControlledTokenIds(controlled);
@@ -101,23 +131,51 @@ export const JournalProvider: React.FC<JournalProviderProps> = ({ children }) =>
       }
     };
 
-    loadData();
-    
-    // Poll for token changes every 2 seconds
-    // Note: Using polling as a simple approach; could be improved with OBR event listeners
-    const interval = setInterval(async () => {
-      const selection = await OBR.player.getSelection();
-      const tokenId = selection && selection.length > 0 ? selection[0] : null;
+    const init = async () => {
+      // Initial load
+      await loadData();
       
-      if (tokenId && tokenId !== currentTokenId) {
-        loadData();
-      }
-    }, 2000);
+      // Subscribe to player selection changes
+      unsubscribe = OBR.player.onChange(async (player) => {
+        const selection = player.selection || [];
+        const tokenId = selection.length > 0 ? selection[0] : null;
+        
+        if (tokenId && tokenId !== currentTokenIdRef.current) {
+          console.log('[JournalContext] Selection changed, reloading journals for new token:', tokenId);
+          await loadData();
+        }
+      });
+      
+      // Subscribe to scene item changes to sync journal data across clients
+      unsubscribeItems = OBR.scene.items.onChange(async (items) => {
+        if (!currentTokenIdRef.current) return;
+        
+        // Check if journal items for current token changed
+        const journalItems = items.filter(item =>
+          item.id.startsWith(JOURNAL_ITEM_PREFIX)
+        );
+        
+        if (journalItems.length === 0) return;
+        
+        // Extract journals for current token
+        const updatedData = extractJournalsFromItems(items, currentTokenIdRef.current);
+        if (updatedData) {
+          console.log('[JournalContext] Journal data changed from external source, syncing...');
+          setFolders(updatedData.folders);
+          setNotes(updatedData.notes);
+        }
+      });
+    };
 
-    return () => clearInterval(interval);
-  }, []); // Empty dependency array - runs once on mount
+    init();
 
-  // Save journals to storage
+    return () => {
+      if (unsubscribe) unsubscribe();
+      if (unsubscribeItems) unsubscribeItems();
+    };
+  }, []); // Empty dependency array - runs once on mount, using ref to track currentTokenId
+
+  // Save journals to OBR items
   const saveData = async (updatedFolders: JournalFolder[], updatedNotes: JournalNote[]) => {
     if (!currentTokenId) {
       console.error('[JournalContext] No token ID available for saving');
@@ -125,15 +183,13 @@ export const JournalProvider: React.FC<JournalProviderProps> = ({ children }) =>
     }
     
     try {
-      const campaignId = await getCampaignId();
       const data: JournalData = {
         folders: updatedFolders,
         notes: updatedNotes,
+        migratedToOBR: true,
       };
-      const success = await saveJournals(campaignId, currentTokenId, data);
-      if (!success) {
-        console.error('[JournalContext] Failed to save journals');
-      }
+      await writeJournals(currentTokenId, data);
+      console.log('[JournalContext] Saved journals to OBR items');
     } catch (error) {
       console.error('[JournalContext] Error saving journals:', error);
     }
@@ -141,7 +197,10 @@ export const JournalProvider: React.FC<JournalProviderProps> = ({ children }) =>
 
   // Folder operations
   const addFolder = async (name: string, parentId: string | null, visibility: Visibility): Promise<JournalFolder> => {
-    if (!currentUserId) throw new Error('User ID not available');
+    if (!currentUserId) {
+      console.error('[JournalContext] Cannot add folder: User ID not available yet');
+      throw new Error('User ID not available');
+    }
     
     const newFolder: JournalFolder = {
       id: nanoid(),
@@ -188,7 +247,10 @@ export const JournalProvider: React.FC<JournalProviderProps> = ({ children }) =>
 
   // Note operations
   const addNote = async (title: string, folderId: string | null, visibility: Visibility): Promise<JournalNote> => {
-    if (!currentUserId) throw new Error('User ID not available');
+    if (!currentUserId) {
+      console.error('[JournalContext] Cannot add note: User ID not available yet');
+      throw new Error('User ID not available');
+    }
     
     const now = new Date().toISOString();
     const newNote: JournalNote = {

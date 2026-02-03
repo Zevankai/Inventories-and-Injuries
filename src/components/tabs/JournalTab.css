@@ -163,6 +163,32 @@
   align-items: center;
 }
 
+.unsaved-indicator {
+  color: #ff6b6b;
+  font-size: 0.9em;
+  font-style: italic;
+}
+
+.btn-save {
+  padding: 6px 12px;
+  border: 1px solid var(--accent-gold);
+  background-color: var(--accent-gold);
+  color: var(--bg-dark);
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: opacity 0.2s;
+}
+
+.btn-save:hover:not(:disabled) {
+  opacity: 0.8;
+}
+
+.btn-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .visibility-select {
   padding: 6px;
   border: 1px solid var(--accent-gold);
