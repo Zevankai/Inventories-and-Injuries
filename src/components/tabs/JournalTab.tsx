@@ -34,6 +34,7 @@ export const JournalTab: React.FC<JournalTabProps> = ({ playerRole }) => {
     folders,
     notes,
     loading,
+    currentUserId,
     addFolder,
     updateFolder,
     deleteFolder,
@@ -55,6 +56,8 @@ export const JournalTab: React.FC<JournalTabProps> = ({ playerRole }) => {
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
   const [editingFolderName, setEditingFolderName] = useState('');
   const [sceneTokens, setSceneTokens] = useState<Array<{ id: string; name: string }>>([]);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [editorContent, setEditorContent] = useState<string>('');
 
   const isGM = playerRole === 'GM';
 
@@ -96,9 +99,11 @@ export const JournalTab: React.FC<JournalTabProps> = ({ playerRole }) => {
     ],
     content: selectedNote?.content || '',
     onUpdate: ({ editor }) => {
-      if (selectedNoteId) {
-        const html = editor.getHTML();
-        updateNote(selectedNoteId, { content: html });
+      // Track changes but don't auto-save
+      const html = editor.getHTML();
+      setEditorContent(html);
+      if (selectedNoteId && html !== selectedNote?.content) {
+        setHasUnsavedChanges(true);
       }
     },
   });
@@ -107,6 +112,8 @@ export const JournalTab: React.FC<JournalTabProps> = ({ playerRole }) => {
   React.useEffect(() => {
     if (editor && selectedNote) {
       editor.commands.setContent(selectedNote.content);
+      setEditorContent(selectedNote.content);
+      setHasUnsavedChanges(false);
     }
   }, [selectedNote, editor]);
 
@@ -172,7 +179,21 @@ export const JournalTab: React.FC<JournalTabProps> = ({ playerRole }) => {
   };
 
   const handleSelectNote = (noteId: string) => {
+    // If there are unsaved changes, warn the user
+    if (hasUnsavedChanges) {
+      if (!confirm('You have unsaved changes. Do you want to discard them?')) {
+        return;
+      }
+    }
     setSelectedNoteId(noteId);
+    setHasUnsavedChanges(false);
+  };
+
+  const handleSaveNote = async () => {
+    if (selectedNoteId && editorContent) {
+      await updateNote(selectedNoteId, { content: editorContent });
+      setHasUnsavedChanges(false);
+    }
   };
 
   const handleDeleteNote = async (noteId: string) => {
@@ -214,13 +235,22 @@ export const JournalTab: React.FC<JournalTabProps> = ({ playerRole }) => {
     return <div className="journal-tab">Loading journals...</div>;
   }
 
+  if (!currentUserId) {
+    return <div className="journal-tab">Waiting for user information...</div>;
+  }
+
   return (
     <div className="journal-tab">
       <div className="journal-sidebar">
         <div className="journal-sidebar-header">
           <h3>Folders</h3>
           {isGM && (
-            <button onClick={() => setShowNewFolderModal(true)} className="btn-icon" title="New Folder">
+            <button 
+              onClick={() => setShowNewFolderModal(true)} 
+              className="btn-icon" 
+              title="New Folder"
+              disabled={!currentUserId}
+            >
               +
             </button>
           )}
@@ -260,7 +290,12 @@ export const JournalTab: React.FC<JournalTabProps> = ({ playerRole }) => {
           <div className="journal-notes-header">
             <h3>Notes</h3>
             {isGM && (
-              <button onClick={() => setShowNewNoteModal(true)} className="btn-icon" title="New Note">
+              <button 
+                onClick={() => setShowNewNoteModal(true)} 
+                className="btn-icon" 
+                title="New Note"
+                disabled={!currentUserId}
+              >
                 +
               </button>
             )}
@@ -301,6 +336,14 @@ export const JournalTab: React.FC<JournalTabProps> = ({ playerRole }) => {
                 />
                 {isGM && (
                   <div className="editor-controls">
+                    {hasUnsavedChanges && <span className="unsaved-indicator">Unsaved changes</span>}
+                    <button 
+                      onClick={handleSaveNote} 
+                      className="btn-save"
+                      disabled={!hasUnsavedChanges}
+                    >
+                      Save
+                    </button>
                     <select
                       value={selectedNote.visibility}
                       onChange={(e) => updateNote(selectedNote.id, { visibility: e.target.value as Visibility })}

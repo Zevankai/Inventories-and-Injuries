@@ -52,6 +52,8 @@ export const JournalProvider: React.FC<JournalProviderProps> = ({ children }) =>
 
   // Load journal data and user info
   useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+    
     const loadData = async () => {
       try {
         setLoading(true);
@@ -101,20 +103,27 @@ export const JournalProvider: React.FC<JournalProviderProps> = ({ children }) =>
       }
     };
 
-    loadData();
-    
-    // Poll for token changes every 2 seconds
-    // Note: Using polling as a simple approach; could be improved with OBR event listeners
-    const interval = setInterval(async () => {
-      const selection = await OBR.player.getSelection();
-      const tokenId = selection && selection.length > 0 ? selection[0] : null;
+    const init = async () => {
+      // Initial load
+      await loadData();
       
-      if (tokenId && tokenId !== currentTokenId) {
-        loadData();
-      }
-    }, 2000);
+      // Subscribe to player selection changes instead of polling
+      unsubscribe = OBR.player.onChange(async (player) => {
+        const selection = player.selection || [];
+        const tokenId = selection.length > 0 ? selection[0] : null;
+        
+        if (tokenId && tokenId !== currentTokenId) {
+          console.log('[JournalContext] Selection changed, reloading journals for new token:', tokenId);
+          await loadData();
+        }
+      });
+    };
 
-    return () => clearInterval(interval);
+    init();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, []); // Empty dependency array - runs once on mount
 
   // Save journals to storage
@@ -141,7 +150,10 @@ export const JournalProvider: React.FC<JournalProviderProps> = ({ children }) =>
 
   // Folder operations
   const addFolder = async (name: string, parentId: string | null, visibility: Visibility): Promise<JournalFolder> => {
-    if (!currentUserId) throw new Error('User ID not available');
+    if (!currentUserId) {
+      console.error('[JournalContext] Cannot add folder: User ID not available yet');
+      throw new Error('User ID not available');
+    }
     
     const newFolder: JournalFolder = {
       id: nanoid(),
@@ -188,7 +200,10 @@ export const JournalProvider: React.FC<JournalProviderProps> = ({ children }) =>
 
   // Note operations
   const addNote = async (title: string, folderId: string | null, visibility: Visibility): Promise<JournalNote> => {
-    if (!currentUserId) throw new Error('User ID not available');
+    if (!currentUserId) {
+      console.error('[JournalContext] Cannot add note: User ID not available yet');
+      throw new Error('User ID not available');
+    }
     
     const now = new Date().toISOString();
     const newNote: JournalNote = {
