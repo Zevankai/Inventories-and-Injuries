@@ -55,6 +55,7 @@ export const JournalProvider: React.FC<JournalProviderProps> = ({ children }) =>
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
     let unsubscribeItems: (() => void) | undefined;
+    const currentTokenIdRef = { current: currentTokenId };
     
     const loadData = async () => {
       try {
@@ -74,6 +75,7 @@ export const JournalProvider: React.FC<JournalProviderProps> = ({ children }) =>
         }
         
         setCurrentTokenId(tokenId);
+        currentTokenIdRef.current = tokenId;
         
         // Try to load from OBR items first
         let data = await readJournals(tokenId);
@@ -138,7 +140,7 @@ export const JournalProvider: React.FC<JournalProviderProps> = ({ children }) =>
         const selection = player.selection || [];
         const tokenId = selection.length > 0 ? selection[0] : null;
         
-        if (tokenId && tokenId !== currentTokenId) {
+        if (tokenId && tokenId !== currentTokenIdRef.current) {
           console.log('[JournalContext] Selection changed, reloading journals for new token:', tokenId);
           await loadData();
         }
@@ -146,7 +148,7 @@ export const JournalProvider: React.FC<JournalProviderProps> = ({ children }) =>
       
       // Subscribe to scene item changes to sync journal data across clients
       unsubscribeItems = OBR.scene.items.onChange(async (items) => {
-        if (!currentTokenId) return;
+        if (!currentTokenIdRef.current) return;
         
         // Check if journal items for current token changed
         const journalItems = items.filter(item =>
@@ -156,7 +158,7 @@ export const JournalProvider: React.FC<JournalProviderProps> = ({ children }) =>
         if (journalItems.length === 0) return;
         
         // Extract journals for current token
-        const updatedData = extractJournalsFromItems(items, currentTokenId);
+        const updatedData = extractJournalsFromItems(items, currentTokenIdRef.current);
         if (updatedData) {
           console.log('[JournalContext] Journal data changed from external source, syncing...');
           setFolders(updatedData.folders);
@@ -171,8 +173,7 @@ export const JournalProvider: React.FC<JournalProviderProps> = ({ children }) =>
       if (unsubscribe) unsubscribe();
       if (unsubscribeItems) unsubscribeItems();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty dependency array - runs once on mount, currentTokenId updated via state
+  }, []); // Empty dependency array - runs once on mount, using ref to track currentTokenId
 
   // Save journals to OBR items
   const saveData = async (updatedFolders: JournalFolder[], updatedNotes: JournalNote[]) => {

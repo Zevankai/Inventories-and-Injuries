@@ -58,6 +58,7 @@ export const JournalTab: React.FC<JournalTabProps> = ({ playerRole }) => {
   const [sceneTokens, setSceneTokens] = useState<Array<{ id: string; name: string }>>([]);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [editorContent, setEditorContent] = useState<string>('');
+  const updateTimerRef = React.useRef<number | null>(null);
 
   const isGM = playerRole === 'GM';
 
@@ -99,18 +100,28 @@ export const JournalTab: React.FC<JournalTabProps> = ({ playerRole }) => {
     ],
     content: selectedNote?.content || '',
     onUpdate: ({ editor }) => {
-      // Track changes but don't auto-save
-      const html = editor.getHTML();
-      setEditorContent(html);
-      if (selectedNoteId && html !== selectedNote?.content) {
-        setHasUnsavedChanges(true);
+      // Debounce the state update to avoid updating on every keystroke
+      if (updateTimerRef.current) {
+        clearTimeout(updateTimerRef.current);
       }
+      
+      updateTimerRef.current = setTimeout(() => {
+        const html = editor.getHTML();
+        setEditorContent(html);
+        if (selectedNoteId && html !== selectedNote?.content) {
+          setHasUnsavedChanges(true);
+        }
+      }, 300); // 300ms debounce
     },
   });
 
   // Update editor content when note changes
   React.useEffect(() => {
     if (editor && selectedNote) {
+      // Clear any pending update timer
+      if (updateTimerRef.current) {
+        clearTimeout(updateTimerRef.current);
+      }
       editor.commands.setContent(selectedNote.content);
       setEditorContent(selectedNote.content);
       setHasUnsavedChanges(false);

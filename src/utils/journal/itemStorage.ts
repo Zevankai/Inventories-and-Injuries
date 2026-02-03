@@ -21,6 +21,11 @@ const ITEM_METADATA_KEY_JOURNALS = 'journal.data';
 const ITEM_METADATA_KEY_MIGRATED = 'journal.migrated';
 
 /**
+ * Transparent 1x1 PNG as data URL for invisible scene items
+ */
+const TRANSPARENT_PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+/**
  * Get the item ID for a specific token's journals
  */
 export function getJournalItemId(tokenId: string): string {
@@ -31,14 +36,11 @@ export function getJournalItemId(tokenId: string): string {
  * Create an invisible item for storing journal data
  */
 async function createJournalItem(id: string, name: string): Promise<Item> {
-  // Transparent 1x1 PNG as data URL
-  const transparentPixel = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-
   const item = buildImage(
     {
       height: 1,
       width: 1,
-      url: transparentPixel,
+      url: TRANSPARENT_PIXEL,
       mime: 'image/png'
     },
     { dpi: 150, offset: { x: 0, y: 0 } }
