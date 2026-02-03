@@ -40,7 +40,6 @@ export const JournalTab: React.FC<JournalTabProps> = ({ playerRole }) => {
     addNote,
     updateNote,
     deleteNote,
-    controlledTokenIds,
   } = useJournal();
 
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
@@ -76,20 +75,10 @@ export const JournalTab: React.FC<JournalTabProps> = ({ playerRole }) => {
     });
   }, [notes, isGM]);
 
-  // Get "Shared with me" notes
-  const sharedWithMeNotes = useMemo(() => {
-    return visibleNotes.filter(note =>
-      note.sharedWithTokenIds.some(tokenId => controlledTokenIds.includes(tokenId))
-    );
-  }, [visibleNotes, controlledTokenIds]);
-
   // Get notes for selected folder
   const currentFolderNotes = useMemo(() => {
-    if (selectedFolderId === 'shared-with-me') {
-      return sharedWithMeNotes;
-    }
     return visibleNotes.filter(note => note.folderId === selectedFolderId);
-  }, [visibleNotes, selectedFolderId, sharedWithMeNotes]);
+  }, [visibleNotes, selectedFolderId]);
 
   // Get selected note
   const selectedNote = useMemo(() => {
@@ -237,16 +226,6 @@ export const JournalTab: React.FC<JournalTabProps> = ({ playerRole }) => {
           )}
         </div>
 
-        {/* Shared with me virtual folder */}
-        {sharedWithMeNotes.length > 0 && (
-          <div
-            className={`journal-folder ${selectedFolderId === 'shared-with-me' ? 'selected' : ''}`}
-            onClick={() => setSelectedFolderId('shared-with-me')}
-          >
-            <span>📋 Shared with me ({sharedWithMeNotes.length})</span>
-          </div>
-        )}
-
         {/* Root folders */}
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={visibleFolders.map(f => f.id)} strategy={verticalListSortingStrategy}>
@@ -279,7 +258,7 @@ export const JournalTab: React.FC<JournalTabProps> = ({ playerRole }) => {
       <div className="journal-main">
         <div className="journal-notes-list">
           <div className="journal-notes-header">
-            <h3>{selectedFolderId === 'shared-with-me' ? 'Shared with me' : 'Notes'}</h3>
+            <h3>Notes</h3>
             {isGM && (
               <button onClick={() => setShowNewNoteModal(true)} className="btn-icon" title="New Note">
                 +
