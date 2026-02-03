@@ -114,8 +114,9 @@ export const JournalProvider: React.FC<JournalProviderProps> = ({ children }) =>
         const tokenItems = items.filter((item) => item.layer === 'CHARACTER');
         const controlled = tokenItems
           .filter((token) => {
-            const metadata = token.metadata as any;
-            return metadata['com.weighted-inventory/claim']?.playerId === playerId;
+            const metadata = token.metadata as Record<string, unknown>;
+            const claimData = metadata['com.weighted-inventory/claim'] as { playerId?: string } | undefined;
+            return claimData?.playerId === playerId;
           })
           .map((token) => token.id);
         setControlledTokenIds(controlled);
@@ -170,7 +171,8 @@ export const JournalProvider: React.FC<JournalProviderProps> = ({ children }) =>
       if (unsubscribe) unsubscribe();
       if (unsubscribeItems) unsubscribeItems();
     };
-  }, []); // Empty dependency array - runs once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array - runs once on mount, currentTokenId updated via state
 
   // Save journals to OBR items
   const saveData = async (updatedFolders: JournalFolder[], updatedNotes: JournalNote[]) => {
