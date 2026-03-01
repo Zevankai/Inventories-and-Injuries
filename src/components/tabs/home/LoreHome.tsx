@@ -171,7 +171,7 @@ export function LoreHome({
         <label style={{display:'block', fontSize:'10px', color:'#9c27b0', textTransform:'uppercase', fontWeight: 'bold', marginBottom: '6px'}}>
           📜 Lore Content
         </label>
-        {/* Uses condition as fallback for backward compatibility with existing lore tokens that may have content stored in condition field */}
+        {/* Uses condition field as fallback for backward compatibility with existing lore tokens */}
         <DebouncedTextarea
           value={characterData.loreContent || characterData.condition || ''}
           onChange={(val) => {
