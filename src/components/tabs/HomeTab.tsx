@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import type { RefObject } from 'react';
 import type { CharacterData, PackType, ActiveTrade, CharacterStats, ConditionType, RestType, GMCustomizations, CharacterSheet, InjuryLocation, CharacterInjuryData, DeathSaves, AbilityScores, SuperiorityDice, Scar, Project, MerchantSettings } from '../../types';
+import { AbilityScoreCircle, DeathSavesDisplay, CollapsibleDashboardSection } from './home/shared';
 import { INJURY_HP_VALUES } from '../../types';
 import type { CalendarConfig } from '../../types/calendar';
 import { ReputationDisplay } from '../ReputationDisplay';
@@ -14,7 +15,7 @@ import type { RestEffectsToApply } from '../RestModal';
 import { EditPopup } from '../EditPopup';
 import { InjuryPromptModal } from '../InjuryPromptModal';
 import { ShopPresetManager } from '../ShopPresetManager';
-import { createDefaultCharacterSheet, calculateModifier, ABILITY_ABBREV } from '../../utils/characterSheet';
+import { createDefaultCharacterSheet, calculateModifier } from '../../utils/characterSheet';
 import { createDefaultExhaustionState, createDefaultRestHistory, createDefaultCharacterStats, createDefaultDeathSaves, createDefaultHitDice, createDefaultSuperiorityDice } from '../../utils/characterStats';
 import { createDefaultConditions, CONDITION_LABELS, INJURY_CONDITION_TYPES } from '../../data/conditions';
 import { deductRationsFromInventory } from '../../utils/inventory';
@@ -49,340 +50,6 @@ const MAX_LEVEL = 20;
 // Daily exhaustion check time (in-game hour, 0-23)
 const EXHAUSTION_CHECK_HOUR = 8;
 
-// Purple Collapsible Section Component
-interface PurpleCollapsibleSectionProps {
-  title: string;
-  defaultExpanded?: boolean;
-  children: React.ReactNode;
-}
-
-const PurpleCollapsibleSection = ({ 
-  title, 
-  defaultExpanded = false, 
-  children 
-}: PurpleCollapsibleSectionProps) => {
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
-  const [isHovered, setIsHovered] = useState(false);
-
-  return (
-    <div style={{ marginTop: '8px' }}>
-      <div
-        onClick={() => setIsExpanded(!isExpanded)}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            setIsExpanded(!isExpanded);
-          }
-        }}
-        aria-expanded={isExpanded}
-        aria-label={`${title} section, ${isExpanded ? 'click to collapse' : 'click to expand'}`}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          cursor: 'pointer',
-          padding: '8px 10px',
-          background: isHovered 
-            ? 'linear-gradient(135deg, rgba(138, 43, 226, 0.35), rgba(75, 0, 130, 0.35))' 
-            : 'linear-gradient(135deg, rgba(138, 43, 226, 0.25), rgba(75, 0, 130, 0.25))',
-          borderRadius: '6px',
-          border: `1px solid ${isHovered ? 'rgba(186, 85, 211, 0.5)' : 'rgba(138, 43, 226, 0.3)'}`,
-          marginBottom: isExpanded ? '8px' : '0',
-          transition: 'all 0.2s ease',
-        }}
-      >
-        <span style={{
-          fontSize: '11px',
-          fontWeight: 'bold',
-          color: '#fff',
-          textTransform: 'uppercase',
-          letterSpacing: '0.5px',
-        }}>
-          {title}
-        </span>
-        <span 
-          style={{ 
-            color: '#e0b0ff', 
-            fontSize: '11px',
-            transition: 'transform 0.2s ease',
-            transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-          }}
-          aria-hidden="true"
-        >
-          ▼
-        </span>
-      </div>
-      {isExpanded && (
-        <div style={{
-          background: 'rgba(75, 0, 130, 0.1)',
-          borderRadius: '6px',
-          padding: '10px',
-          border: '1px solid rgba(138, 43, 226, 0.2)',
-        }}>
-          {children}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Ability Score Circle Component
-interface AbilityScoreCircleProps {
-  ability: keyof AbilityScores;
-  score: number;
-  modifier: number;
-  canEdit: boolean;
-  onScoreChange: (score: number) => void;
-}
-
-const AbilityScoreCircle = ({ ability, score, modifier, canEdit, onScoreChange }: AbilityScoreCircleProps) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(score.toString());
-
-  const handleClick = () => {
-    if (canEdit) {
-      setEditValue(score.toString());
-      setIsEditing(true);
-    }
-  };
-
-  const handleSave = () => {
-    const parsed = parseInt(editValue, 10);
-    const newScore = isNaN(parsed) ? 10 : Math.max(1, Math.min(30, parsed));
-    onScoreChange(newScore);
-    setIsEditing(false);
-  };
-
-  return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      gap: '2px',
-    }}>
-      <span style={{
-        fontSize: '8px',
-        color: 'var(--text-muted)',
-        textTransform: 'uppercase',
-        letterSpacing: '0.3px',
-      }}>
-        {ABILITY_ABBREV[ability]}
-      </span>
-      <div
-        onClick={handleClick}
-        style={{
-          width: '42px',
-          height: '42px',
-          borderRadius: '50%',
-          background: 'linear-gradient(135deg, rgba(0, 188, 212, 0.3), rgba(0, 150, 170, 0.3))',
-          border: '2px solid rgba(0, 188, 212, 0.6)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: canEdit ? 'pointer' : 'default',
-          transition: 'all 0.2s ease',
-          boxShadow: '0 2px 6px rgba(0, 188, 212, 0.2)',
-        }}
-        title={canEdit ? 'Click to edit' : undefined}
-      >
-        {isEditing ? (
-          <input
-            type="number"
-            value={editValue}
-            min={1}
-            max={30}
-            onChange={(e) => setEditValue(e.target.value)}
-            onBlur={handleSave}
-            onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-            autoFocus
-            style={{
-              width: '28px',
-              background: 'transparent',
-              border: 'none',
-              color: '#00bcd4',
-              fontSize: '12px',
-              fontWeight: 'bold',
-              textAlign: 'center',
-              outline: 'none',
-            }}
-          />
-        ) : (
-          <>
-            <span style={{
-              fontSize: '14px',
-              fontWeight: 'bold',
-              color: '#00bcd4',
-              lineHeight: 1,
-            }}>
-              {modifier >= 0 ? `+${modifier}` : modifier}
-            </span>
-            <span style={{
-              fontSize: '9px',
-              color: 'rgba(0, 188, 212, 0.8)',
-            }}>
-              {score}
-            </span>
-          </>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// Monster Ability Score Circle - Red themed version for monster tokens
-interface MonsterAbilityScoreCircleProps {
-  ability: keyof AbilityScores;
-  score: number;
-  modifier: number;
-  onScoreChange: (score: number) => void;
-}
-
-const MonsterAbilityScoreCircle = ({ ability, score, modifier, onScoreChange }: MonsterAbilityScoreCircleProps) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(score.toString());
-
-  const handleClick = () => {
-    setEditValue(score.toString());
-    setIsEditing(true);
-  };
-
-  const handleSave = () => {
-    const parsed = parseInt(editValue, 10);
-    const newScore = isNaN(parsed) ? 10 : Math.max(1, Math.min(30, parsed));
-    onScoreChange(newScore);
-    setIsEditing(false);
-  };
-
-  return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      gap: '2px',
-    }}>
-      <span style={{
-        fontSize: '8px',
-        color: 'rgba(229, 57, 53, 0.8)',
-        textTransform: 'uppercase',
-        letterSpacing: '0.3px',
-        fontWeight: 'bold',
-      }}>
-        {ABILITY_ABBREV[ability]}
-      </span>
-      <div
-        onClick={handleClick}
-        style={{
-          width: '42px',
-          height: '42px',
-          borderRadius: '50%',
-          background: 'linear-gradient(135deg, rgba(229, 57, 53, 0.3), rgba(200, 40, 40, 0.3))',
-          border: '2px solid rgba(229, 57, 53, 0.6)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          transition: 'all 0.2s ease',
-          boxShadow: '0 2px 6px rgba(229, 57, 53, 0.3)',
-        }}
-        title="Click to edit"
-      >
-        {isEditing ? (
-          <input
-            type="number"
-            value={editValue}
-            min={1}
-            max={30}
-            onChange={(e) => setEditValue(e.target.value)}
-            onBlur={handleSave}
-            onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-            autoFocus
-            style={{
-              width: '28px',
-              background: 'transparent',
-              border: 'none',
-              color: '#e53935',
-              fontSize: '12px',
-              fontWeight: 'bold',
-              textAlign: 'center',
-              outline: 'none',
-            }}
-          />
-        ) : (
-          <>
-            <span style={{
-              fontSize: '14px',
-              fontWeight: 'bold',
-              color: '#e53935',
-              lineHeight: 1,
-            }}>
-              {modifier >= 0 ? `+${modifier}` : modifier}
-            </span>
-            <span style={{
-              fontSize: '9px',
-              color: 'rgba(229, 57, 53, 0.8)',
-            }}>
-              {score}
-            </span>
-          </>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// Death Saves Component - Clickable skull icons
-interface DeathSavesDisplayProps {
-  deathSaves: DeathSaves;
-  onUpdate: (updates: Partial<DeathSaves>) => void;
-  canEdit: boolean;
-}
-
-const DeathSavesDisplay = ({ deathSaves, onUpdate, canEdit }: DeathSavesDisplayProps) => {
-  const handleFailureClick = (index: number) => {
-    if (!canEdit) return;
-    // Toggle logic: clicking on an active skull turns it off (sets failures to that index)
-    // Clicking on an inactive skull turns it on (sets failures to index + 1)
-    const clickedPosition = index + 1; // 1-based position
-    if (clickedPosition <= deathSaves.failures) {
-      // Clicking on active skull - toggle it off (set to the skull before this one)
-      onUpdate({ failures: index });
-    } else {
-      // Clicking on inactive skull - toggle it on
-      onUpdate({ failures: clickedPosition });
-    }
-  };
-
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-      {[0, 1, 2].map((index) => (
-        <button
-          key={index}
-          onClick={() => handleFailureClick(index)}
-          disabled={!canEdit}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: canEdit ? 'pointer' : 'default',
-            fontSize: '16px',
-            padding: '2px',
-            opacity: index < deathSaves.failures ? 1 : 0.3,
-            filter: index < deathSaves.failures ? 'none' : 'grayscale(100%)',
-            transition: 'all 0.2s ease',
-          }}
-          title={`Death Save Failure ${index + 1}${index < deathSaves.failures ? ' (active)' : ''}`}
-        >
-          💀
-        </button>
-      ))}
-    </div>
-  );
-};
 
 // Helper function to get HP color class based on current/max ratio
 const getHpColorClass = (current: number, max: number): string => {
@@ -3009,7 +2676,7 @@ export function HomeTab({
 
       {/* === CONDITIONS & EXHAUSTION - Purple Collapsible section === */}
       {!viewingStorageId && characterData.tokenType !== 'lore' && characterData.tokenType !== 'monster' && (characterData.tokenType !== 'npc' || playerRole === 'GM') && (
-        <PurpleCollapsibleSection title="Conditions & Exhaustion" defaultExpanded={false}>
+        <CollapsibleDashboardSection title="Conditions & Exhaustion" defaultExpanded={false}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {/* Full Conditions Panel */}
             <ConditionsPanel
@@ -3028,7 +2695,7 @@ export function HomeTab({
               customEffects={gmCustomizations?.exhaustionEffects}
             />
           </div>
-        </PurpleCollapsibleSection>
+        </CollapsibleDashboardSection>
       )}
 
       {/* === SKILLS & PROFICIENCIES - Purple Collapsible section - Just beneath Conditions and Exhaustion === */}
@@ -3036,13 +2703,13 @@ export function HomeTab({
        characterData.tokenType !== 'lore' &&
        characterData.tokenType !== 'monster' &&
        (characterData.tokenType !== 'npc' || playerRole === 'GM') && (
-        <PurpleCollapsibleSection title="Skills & Proficiencies" defaultExpanded={false}>
+        <CollapsibleDashboardSection title="Skills & Proficiencies" defaultExpanded={false}>
           <CharacterSheetSection
             characterData={characterData}
             canEdit={canUserEdit}
             updateData={updateData}
           />
-        </PurpleCollapsibleSection>
+        </CollapsibleDashboardSection>
       )}
 
       {/* === FEATURES & TRAITS - Purple Collapsible section - Beneath Skills & Proficiencies === */}
@@ -3050,7 +2717,7 @@ export function HomeTab({
        characterData.tokenType !== 'lore' &&
        characterData.tokenType !== 'monster' &&
        (characterData.tokenType !== 'npc' || playerRole === 'GM') && (
-        <PurpleCollapsibleSection title="Features & Traits" defaultExpanded={false}>
+        <CollapsibleDashboardSection title="Features & Traits" defaultExpanded={false}>
           {(() => {
             const sheet = characterData.characterSheet || createDefaultCharacterSheet();
             const handleUpdateSheet = (updates: Partial<CharacterSheet>) => {
@@ -3090,7 +2757,7 @@ export function HomeTab({
               </div>
             );
           })()}
-        </PurpleCollapsibleSection>
+        </CollapsibleDashboardSection>
       )}
 
       {/* Rest Modal */}
@@ -3409,11 +3076,12 @@ export function HomeTab({
               {(() => {
                 const sheet = characterData.characterSheet || createDefaultCharacterSheet();
                 return (Object.keys(sheet.abilityScores) as Array<keyof AbilityScores>).map((ability) => (
-                  <MonsterAbilityScoreCircle
+                  <AbilityScoreCircle variant="monster"
                     key={ability}
                     ability={ability}
                     score={sheet.abilityScores[ability].base}
                     modifier={sheet.abilityScores[ability].modifier}
+                    canEdit={true}
                     onScoreChange={(newScore) => {
                       const sheet = characterData.characterSheet || createDefaultCharacterSheet();
                       const newModifier = calculateModifier(newScore);
@@ -4118,7 +3786,7 @@ export function HomeTab({
 
       {/* Pack Slots - collapsible section for main view */}
       {!viewingStorageId && canUserEdit && (
-            <PurpleCollapsibleSection title="Pack Slots" defaultExpanded={false}>
+            <CollapsibleDashboardSection title="Pack Slots" defaultExpanded={false}>
               <div className="totals-grid">
                 <div className="stat-box" style={{borderColor: stats.usedSlots.weapon > stats.maxSlots.weapon ? 'var(--danger)' : 'transparent', borderStyle:'solid', borderWidth:'1px'}}>
                   <div className="stat-label">WEAPONS</div>
@@ -4132,11 +3800,11 @@ export function HomeTab({
                 <div className="stat-box"><div className="stat-label">JEWELRY</div><div className="stat-value">{stats.usedSlots.jewelry} <span style={{fontSize:'10px', color:'#666'}}>/ {stats.maxSlots.jewelry}</span></div></div>
                 <div className="stat-box" style={{gridColumn: 'span 2', background: 'rgba(240, 225, 48, 0.05)'}}><div className="stat-label" style={{color: 'var(--accent-gold)'}}>UTILITY / QUICK</div><div className="stat-value">{stats.usedSlots.utility} <span style={{fontSize:'10px', color:'#666'}}>/ {stats.maxSlots.utility}</span></div></div>
               </div>
-            </PurpleCollapsibleSection>
+            </CollapsibleDashboardSection>
       )}
 
       {/* Show description - editable only if GM, owner, or party token */}
-      <PurpleCollapsibleSection title="Biography & Description" defaultExpanded={false}>
+      <CollapsibleDashboardSection title="Biography & Description" defaultExpanded={false}>
         {(() => {
           const sheet = characterData.characterSheet || createDefaultCharacterSheet();
           const handleUpdateSheet = (updates: Partial<CharacterSheet>) => {
@@ -4456,7 +4124,7 @@ export function HomeTab({
             </div>
           );
         })()}
-      </PurpleCollapsibleSection>
+      </CollapsibleDashboardSection>
 
       {/* Storage Notes - only show when viewing storage and can edit */}
       {viewingStorageId && canEditToken() && (
